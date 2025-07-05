@@ -1,0 +1,84 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+</div>
+
+
+
+    <div class="form-row">
+
+        <div class="form-group col-md-3">
+        <a id="pickfile1" name="pickfile1" href="javascript:;" class="btn btn-info">[Select file1]</a>
+        <a id="uploadfiles" href="javascript:;">[Upload files]</a>
+        </div>
+      
+    </div>
+
+
+
+
+@section Scripts{
+
+    <script>
+        $(document).ready(function () {
+         console.log("doc");
+
+
+        var uploader = new plupload.Uploader({
+            browse_button: 'pickfile1', // ปุ่มเลือกไฟล์
+            //url: 'https://localhost:5001/api/upload', // URL ของ .NET Core API
+            url: '@Url.Action("upload", "Home")',
+            chunk_size: '1mb', // ขนาดของแต่ละ chunk
+            //multipart: true,
+            multi_selection: false,
+            filters: {
+                max_file_size: '100mb',
+                mime_types: [{ title: "Files", extensions: "*" }]
+            }
+        });
+
+        uploader.init();
+
+        uploader.bind('FilesAdded', function (up, files) {
+            //console.log("FilesAdded");
+            uploader.start();
+        });
+
+        uploader.bind('UploadProgress', function (up, file) {
+            // file.name.innerHTML = '<span>' + file.percent + "%</span>"
+            console.log(file.percent);
+            console.log(file._options);
+            document.getElementById(file._options.browse_button[0].id).innerHTML = '<span>' + file.percent + "%</span>";
+
+          //  console.log(document.getElementsByName(file.name));
+        });
+
+
+        //  uploader.bind('UploadProgress', function (up, file) {
+        //     document.getElementById(file.id).getElementsByTagName('b')[0].innerHTML = '<span>' + file.percent + "%</span>";
+        //   //  up.trigger("disableBrowse", false);
+        // });
+
+
+         document.getElementById('uploadfiles').onclick = function () {
+           // uploader.disableBrowse(true);
+           // uploader.start();
+            console.log(uploader);
+            // $.each(uploader.files, function (i, file) {
+            //    console.log(file.id);
+            // });
+
+            //uploader.start();
+
+        };
+
+
+
+        });
+    </script>
+        
+}
