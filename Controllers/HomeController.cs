@@ -15,9 +15,9 @@ namespace WebPlupload.Controllers
 
         private readonly string _uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
 
-        public HomeController(ILogger<HomeController> logger, Renew renew)
+        public HomeController(ILogger<HomeController> logger)
         {
-            _renew = renew;
+            
             _logger = logger;
         }
 

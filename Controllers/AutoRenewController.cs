@@ -19,7 +19,7 @@ namespace WebPlupload.Controllers
 
         [HttpGet]
         [Route("Index")]
-        public IActionResult Index()
+        public  IActionResult Index()
         {
             //var status1 = false;
             //var status2 = false;
