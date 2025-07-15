@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using WebPlupload.Sevices;
 
 namespace WebPlupload
@@ -16,6 +17,9 @@ namespace WebPlupload
             builder.Services.AddControllersWithViews();
 
             builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
+
+
+            builder.Services.AddEGovPlatform(builder.Configuration);
 
             var app = builder.Build();
 
