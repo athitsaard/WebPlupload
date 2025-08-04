@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using WebPlupload.Models;
 using WebPlupload.Sevices;
 
 namespace WebPlupload
@@ -20,6 +22,16 @@ namespace WebPlupload
 
 
             builder.Services.AddEGovPlatform(builder.Configuration);
+
+
+            builder.Services.AddSingleton<SmsConfiguration>(
+               sp => sp.GetRequiredService<IOptions<SmsConfiguration>>().Value);
+
+            builder.Services.Configure<SmsConfiguration>(builder.Configuration
+            .GetSection(nameof(SmsConfiguration)));
+
+            builder.Services.AddSingleton<SmsServices>();
+
 
             var app = builder.Build();
 

@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using EGov.Platform.Net.Abstractions;
 using System.Net;
 using System.Threading;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 namespace WebPlupload.Sevices
 {
     public class Renew
@@ -16,12 +17,15 @@ namespace WebPlupload.Sevices
         private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _config;
         private readonly IApiClient _api;
-        public Renew(Edoc edoc, IWebHostEnvironment env,IConfiguration config, IApiClient api)
+
+        private readonly SmsServices _sms;
+        public Renew(Edoc edoc, IWebHostEnvironment env,IConfiguration config, IApiClient api, SmsServices sms)
         {
             _edoc = edoc;
             _env = env;
             _config = config;
             _api = api;
+            _sms = sms;
         }
 
        
@@ -42,18 +46,20 @@ namespace WebPlupload.Sevices
             var tasks = new List<Task<string>>();
 
             var result1 = Task.Run(() => AsyncMethod("juristic1.jsonl"));
-            var result2 = Task.Run(() => AsyncMethod("juristic2.jsonl"));
-            //var result3 = Task.Run(() => AsyncMethod("juristicfile3"));
+            //var result2 = Task.Run(() => AsyncMethod("juristic2.jsonl"));
+            //var result3 = Task.Run(() => AsyncMethod("juristic5.jsonl"));
 
             tasks.Add(result1);
-            tasks.Add(result2);
+            //tasks.Add(result2);
+            //tasks.Add(result3);
 
             var combinedResults = await Task.WhenAll(tasks);
-            //var combinedResults = await Task.WhenAll(result1, result2, result3);
+           // var combinedResults = await Task.WhenAll(result1, result2, result3);
             var result = combinedResults.Select(cr => cr);
             foreach (var r in result)
             {
                 Console.WriteLine(r);
+                SendSMSAsync(r);
             }
 
             Console.WriteLine($"RunTask end on thread: {Environment.CurrentManagedThreadId}");
@@ -75,7 +81,7 @@ namespace WebPlupload.Sevices
                 // result = resLoadfile;
 
 
-                var res1 =  await GetDBDProfile(resLoadfile,f);
+              //  var res1 =  await GetDBDProfile(resLoadfile,f);
 
                 var res2 = await DBDfinance(resLoadfile, f);
 
@@ -112,12 +118,69 @@ namespace WebPlupload.Sevices
             // return new TaskReult{ status ="sucess" ,code =1};
         }
 
+        public Task<string> GetDBDProfile(List<SMEJuristic> juristics, string file)
+        {
+            string filename = file;
+            int Count = 0;
+            int Total = juristics.Count();
+            string fileName = "output.jsonl";
+            var filePath = Path.Combine(_env.WebRootPath, "log", fileName);
+            foreach (var j in juristics.Take(3))
+            {
+                try
+                {
+                    var dbdUrl = _config["EGovPlatform:DBDProfileUrlV7"];
+                    var req = _api.Create(dbdUrl, AgentID: "SME").AddJsonBody(new { OrganizationJuristicID = j.Id }); ;
+                    var res = _api.Post<DBDProfileResponseV7>(req);
+                    var result = res.status.code;
+                    var data = res.data;
+                    var juristicProfileV7Data = JsonConvert.DeserializeObject<DBDProfileV7Juristic>(JsonConvert.SerializeObject(data));
+                    Count++;
 
+                    var juristicdata = JsonConvert.SerializeObject(j);
+
+
+                    // Path to the file you want to append to
+
+                    // Append the JSON string to the file with a newline
+                    File.AppendAllText(filePath, juristicdata + Environment.NewLine);
+
+
+                    Console.WriteLine("DBDProfile " + filename + " - " + juristicProfileV7Data.JuristicPerson.JuristicID + " - " + juristicProfileV7Data.JuristicPerson.JuristicNameTH + " - " + Count + "/" + Total);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+
+
+                //return juristicProfileV7Data;
+            }
+
+
+            return Task.FromResult("");
+
+        }
         public Task<string> DBDfinance(List<SMEJuristic> juristics,string f)
         {
             var file = f;
             int Count = 0;
-            foreach (var j in juristics.Take(5))
+
+            string fileName2568only = "2568only.jsonl";
+            var filePath2568only = Path.Combine(_env.WebRootPath, "log", fileName2568only);
+
+            string fileName2567only = "2567only.jsonl";
+            var filePath2567only = Path.Combine(_env.WebRootPath, "log", fileName2567only);
+
+
+            string fileName2568_2567No = "2568_2567No.jsonl";
+            var filePath2568_2567No = Path.Combine(_env.WebRootPath, "log", fileName2568_2567No);
+
+
+            string fileName2568_2567Yes = "2568_2567Yes.jsonl";
+            var filePath2568_2567Yes = Path.Combine(_env.WebRootPath, "log", fileName2568_2567Yes);
+
+            foreach (var j in juristics.Take(10))
             {
                 
                 int Total = juristics.Count();
@@ -131,29 +194,27 @@ namespace WebPlupload.Sevices
 
                     try
                     {
-                        string dbdUrl = _config["EGovPlatform:DBDFinancialUrl"];
-                        IRestRequest req = _api.Create(dbdUrl)
-                            .AddQueryParameter("JuristicID", j.Id)
-                            .AddQueryParameter("Year", string.IsNullOrEmpty(year) ?
-                                (DateTimeOffset.UtcNow.Year + 543).ToString() : year);
-                        var res = _api.Get(req);
-                        if (res.StatusCode == HttpStatusCode.OK)
+                        var dbdUrl = _config["EGovPlatform:DBDFinancialUrlV7"];
+                        var req = _api.Create(dbdUrl, AgentID: "SME").AddJsonBody(new { OrganizationJuristicID = j.Id , FiscalYear = year }); ;
+                        var res = _api.Post<DBDFinancialResponseV7>(req);
+                        if(res.status.code == "1000")
                         {
-                            DBDFinancialResponse content = JsonConvert.DeserializeObject<DBDFinancialResponse>(res.Content);
-                            var finance = content.GetDBDFinancial();
-
-                            dic.Add(year, finance.TotalRevenue);
+                            //var result = res.status.code;
+                            var data = res.data;
+                            var juristicFinancailV7Data = JsonConvert.DeserializeObject<DBDFinancailV7Juristic>(JsonConvert.SerializeObject(data));
+                            dic.Add(year, juristicFinancailV7Data.TotalRevenue);
                         }
                         else
                         {
-                            dic.Add(year, null);
+                             dic.Add(year, null);
                         }
-                        
+
+
 
                     }
                     catch(Exception ex)
                     {
-                        dic.Add(year, null);
+                       // dic.Add(year, null);
                     }
 
                     currentYear = currentYear - 1;
@@ -166,10 +227,43 @@ namespace WebPlupload.Sevices
 
                 Console.WriteLine($"DBDfinance {file}  {j.Id} {resdic.ElementAt(0).Key}:{resdic.GetValueOrDefault(resdic.ElementAt(0).Key)} {resdic.ElementAt(1).Key}:{resdic.GetValueOrDefault(resdic.ElementAt(1).Key)} {resdic.ElementAt(2).Key}:{resdic.GetValueOrDefault(resdic.ElementAt(2).Key)}  {resdic.ElementAt(3).Key}:{resdic.GetValueOrDefault(resdic.ElementAt(3).Key)}" + " - " + Count + "/" + Total);
 
+                if (j.Id == "0523563000714")
+                {
+
+                    var IsId = j.Id;
+                }
+
+
+                if (resdic.GetValueOrDefault(resdic.ElementAt(0).Key) != null && resdic.GetValueOrDefault(resdic.ElementAt(1).Key) == null)
+                {
+                    var juristicdata = JsonConvert.SerializeObject(j);
+                    File.AppendAllText(filePath2568only, juristicdata + Environment.NewLine);
+                }
+
+                if (resdic.GetValueOrDefault(resdic.ElementAt(0).Key) == null && resdic.GetValueOrDefault(resdic.ElementAt(1).Key) != null)
+                {
+                    var juristicdata = JsonConvert.SerializeObject(j);
+                    File.AppendAllText(filePath2567only, juristicdata + Environment.NewLine);
+                }
+
+
+                if (resdic.GetValueOrDefault(resdic.ElementAt(0).Key) == null && resdic.GetValueOrDefault(resdic.ElementAt(1).Key) == null)
+                {
+                    var juristicdata = JsonConvert.SerializeObject(j);
+                    File.AppendAllText(filePath2568_2567No, juristicdata + Environment.NewLine);
+                }
+
+
+                if (resdic.GetValueOrDefault(resdic.ElementAt(0).Key) != null && resdic.GetValueOrDefault(resdic.ElementAt(1).Key) != null)
+                {
+                    var juristicdata = JsonConvert.SerializeObject(j);
+                    File.AppendAllText(filePath2568_2567Yes, juristicdata + Environment.NewLine);
+                }
+
 
             }
 
-            
+
 
             //Console.WriteLine($"DBDfinance {file} started on thread: {Environment.CurrentManagedThreadId}");
             return Task.FromResult($"return DBDfinance {file}");
@@ -240,37 +334,7 @@ namespace WebPlupload.Sevices
         //    return Task.FromResult($"return SaveToSme {file}");
         //}
 
-        public Task<string> GetDBDProfile(List<SMEJuristic> juristics,string file)
-        {
-            string filename = file;
-            int Count = 0;
-            int Total = juristics.Count();
-            foreach (var j in juristics.Take(5))
-            {
-                try
-                {
-                    var dbdUrl = _config["EGovPlatform:DBDProfileUrlV7"];
-                    var req = _api.Create(dbdUrl, AgentID: "SME").AddJsonBody(new { OrganizationJuristicID = j.Id }); ;
-                    var res = _api.Post<DBDProfileResponseV7>(req);
-                    var result = res.status.code;
-                    var data = res.data;
-                    var juristicProfileV7Data = JsonConvert.DeserializeObject<DBDProfileV7Juristic>(JsonConvert.SerializeObject(data));
-                    Count++;
-                    Console.WriteLine("DBDProfile " + filename+" - "+juristicProfileV7Data.JuristicPerson.JuristicID +" - "+ juristicProfileV7Data.JuristicPerson.JuristicNameTH+" - "+Count+"/"+ Total);
-                }
-                catch(Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-
-                
-                //return juristicProfileV7Data;
-            }
-
-
-            return Task.FromResult("");
-           
-        }
+       
 
 
         public  Task<string> GetApiToken(string f, string AgentId = "dgaAgent")
@@ -309,6 +373,40 @@ namespace WebPlupload.Sevices
             return Task.FromResult(result);
         }
 
+
+        private async void SendSMSAsync( string extraString)
+        {
+            try
+            {
+                //await Task.Delay(TimeSpan.FromSeconds(1));
+                //var resDic = _resRepo.Find(e => e.ResourceName == "SMS").FirstOrDefault().ResourceData;
+                //if (resDic.ContainsKey(resourceKey))
+                //{
+                //    var resValueTH = resDic[resourceKey].ValueTH;
+                //    string smsBody = string.Empty;
+                //    if (!string.IsNullOrEmpty(extraString))
+                //    {
+                //        smsBody = string.Format(resValueTH,
+                //                       requestNumber,
+                //                       DateTimeOffset.Now.ToString("dd MMM yyyy", new System.Globalization.CultureInfo("th-TH")),
+                //                       DateTimeOffset.Now.ToString("HH.mm"),
+                //                       extraString);
+                //    }
+                //    else
+                //    {
+                //        smsBody = string.Format(resValueTH, requestNumber, DateTimeOffset.Now.ToString("dd MMM yyyy", new System.Globalization.CultureInfo("th-TH")), DateTime.Now.ToString("HH.mm"), extraString);
+                //    }
+                   var mobileNumbers = new List<string>() { "0815340611" };
+                   var smsBody = "auto renew " + extraString;
+
+                    await _sms.SendAsync(mobileNumbers, smsBody);
+                
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
 
 
     }
